@@ -1,0 +1,110 @@
+#+title: Automated Extended TI for GROMOS
+
+A script written in Julia to automate runs of [[https://github.com/Molecular-Simulation-Lab-UV/autexti.git][Extended Thermodynamic Integration]] by repeated calls of the [[http://gromos.net][GROMOS]] simulation and analysis packages.
+
+* Usage
+
+The script only loads one argument from the command line interface: the absolute path of the extended TI simulation directory.
+This is to make it callable from GROMOS scripts generated with ~mk_script~.
+The library file for ~mk_script~ should include the following line in the MISCELLANEOUS block.
+#+begin_example
+lastcommand echo $OUTPUTTRE.gz >> en_files.dat && echo $OUTPUTTRG.gz >> fr_files.dat && julia /path/to/autexti/autexti.jl $SIMULDIR
+#+end_example
+(assuming there's a working Julia installation is in ~PATH~)
+A sample library file can be found in ~examples/~.
+
+Additionally, the script will look for a configuration file ~ext_ti.conf~ in the simulation directory.
+
+Based on a working ~mk_script~ argument file, ~autexti.jl~ will generate Extended TI simulations; either adding new $\lambda$ points or extending them until the specified convergence criteria are met.
+
+To start the process, call the program passing the same directory specified with ~@dir~ in the ~mk_script~ argument file.
+
+ #+begin_example
+ $ julia /path/to/autexti/autexti.jl /path/to/simuldir/
+ #+end_example
+
+* Options and features
+
+A sample configuration file can be found in ~examples/~
+
+** Configuration file
+~header~    String, currently unused.
+*** [paths]
+- ~prefix~
+String. Prefix for simulation folders. Following the GROMOS tutorial it would be "L_"
+- ~queuefile~
+String. File where queued jobs will be kept track of. Relative to ~simuldir~.
+- ~logfile~
+String. File where lines of ~queuefile~ will be saved to after running lobs. Only relevant if ~logqueue=1~. Relative to ~simuldir~.
+- ~statefile~
+String. File where progress is logged. Relative to ~simuldir~.
+- ~command~
+String. Command to call the GROMOS scripts with, such as ~slurm~. If lent blank it will be called directly.
+- ~mk_script_args~
+String. Argument file for ~mk_script~. Relative to ~simuldir~.
+- ~ene_ana_lib~
+Library file for ~ene_ana~ and ~ext_ti_ana~. Relative to ~simuldir~.
+- ~gromospath~
+Path to a ~gromos++~ installation (in case it's not in path).
+
+*** [initialization]
+- ~eq_scripts~
+  Int. Number of equilibration scripts.
+- ~eq_steps~
+  Int. Number of steps (NSTLIM) for equilibration scripts.
+- ~md_stels~
+  Int. Number of steps (NSTLIM) for non-equilibration scripts.
+- ~min_md_scripts~
+  Int. Number of non-equilibration scripts to run before any analysis.
+- ~max_md_scripts~
+  Int. Maximum number of non-equilibration scripts to run regardless of analysis results.
+- ~max_total_scripts~
+  Int. Maximum number of non-equilibrium steps across all simulated $\lambda$s. *Currently not implemented.*
+- ~stepsb4ext~
+  Float. For the initial run, points will be created between $\lambda=0$ and $\lambda=1$ in increases of ~stepsb4ext~.
+  For example, ~stepsb4ext=1~ will have an initial run of only 0 and 1, while ~stepsb4ext=.2~ would create an initial run of 0, .2, .4, .6, .8, and 1.
+  0 and 1 will always be generated.
+- ~start_scripts~
+  Int. If >0, set the number of non-equilibration simulations for $\lambda=0$, ignoring ~min_md_scripts~ and ~max_md_scripts~. Required for endpoints where $\frac{\partial \mathcal{V}}{\partial \lambda}$ is 0.
+- ~end_scripts~
+  Int. If >0, set the number of non-equilibration simulations for $\lambda=1$, ignoring ~min_md_scripts~ and ~max_md_scripts~. Required for endpoints where $\frac{\partial \mathcal{V}}{\partial \lambda}$ is 0.
+
+*** [analysis]
+- ~dvdl_tol~
+  Float. For a given $\lambda$ point, scripts will keep being generated until the error estimate for $\frac{\partial \mathcal{V}}{\partial \lambda}$ at that point falls below ~dvdl_tol~.
+- ~pred_tol~
+  Float. Depends on ~criteria~. If it's set to "pred", new $\lambda$ points will keep being added intil the error estimate for all points falls below ~pred_tol~. For all other criteria, instead, points will keep being added until the difference between the integral of simulated points and that of predicted points falls below ~pred_tol~.
+- ~skip4ana~
+  Int. Number of energy trajectories to skip for analysis, starting from the first equilibrium simulation. It is recommended to set equal to ~eq_scripts~.
+
+*** [options]
+- ~logqueue~
+  Bool. If set to 1, log simulations to ~logfile~ as they are ran.
+- ~logmerges~
+  Bool. If set to 1, log previous resulults of ~ext_ti_ana~ when a new $lambda$ point is added.
+- ~criteria~
+  String. How the values of new points are decided. Currently accepts: pred, ydist, xydist, areamid.
+# * Planned features
+
+# * Modifying the script
+
+** Criteria
+
+When choosing a new point to simulate, the following criteria are currently implemented.
+
+*** pred
+
+Optimize predicted points. Looks at the predicted PMF and chooses the point with the highest error estimate until all predicted points have an error estimate below ~pred_tol~.
+
+*** ydist
+
+Choose the point for which the prediction is furthest in the y-axis (energy) to a (linear interpolation) of simulated points.
+
+
+*** xydist
+
+Choose the point for which the predictions highest minimum distance (in both energy and $\lambda$) to (a linear interpolation of) simulated points.
+
+*** areamid
+
+For each segment of the simulated PMF, compares the area under the curve to the integral of the corresponding segment of the predicted PMF. Adds the next simulation at the mid-point of the segment with the highest difference to the predicted PMF.
