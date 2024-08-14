@@ -39,7 +39,7 @@ String. File where lines of ~queuefile~ will be saved to after running lobs. Onl
 - ~statefile~
 String. File where progress is logged. Relative to ~simuldir~.
 - ~command~
-String. Command to call the GROMOS scripts with, such as ~slurm~. If lent blank it will be called directly.
+String. Command to call the GROMOS scripts with, such as ~sbatch~ for running with ~slurm~. If left blank, the script will be run directly.
 - ~mk_script_args~
 String. Argument file for ~mk_script~. Relative to ~simuldir~.
 - ~ene_ana_lib~
@@ -52,7 +52,7 @@ Path to a ~gromos++~ installation (in case it's not in path).
   Int. Number of equilibration scripts.
 - ~eq_steps~
   Int. Number of steps (NSTLIM) for equilibration scripts.
-- ~md_stels~
+- ~md_steps~
   Int. Number of steps (NSTLIM) for non-equilibration scripts.
 - ~min_md_scripts~
   Int. Number of non-equilibration scripts to run before any analysis.
@@ -81,7 +81,7 @@ Path to a ~gromos++~ installation (in case it's not in path).
 - ~logqueue~
   Bool. If set to 1, log simulations to ~logfile~ as they are ran.
 - ~logmerges~
-  Bool. If set to 1, log previous resulults of ~ext_ti_ana~ when a new $lambda$ point is added.
+  Bool. If set to 1, log previous resulults of ~ext_ti_ana~ when a new $\lambda$ point is added.
 - ~criteria~
   String. How the values of new points are decided. Currently accepts: pred, ydist, xydist, areamid.
 # * Planned features
@@ -99,7 +99,6 @@ Optimize predicted points. Looks at the predicted PMF and chooses the point with
 *** ydist
 
 Choose the point for which the prediction is furthest in the y-axis (energy) to a (linear interpolation) of simulated points.
-
 
 *** xydist
 
